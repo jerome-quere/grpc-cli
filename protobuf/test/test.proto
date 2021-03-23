@@ -1,0 +1,28 @@
+syntax = "proto3";
+
+package test;
+
+message Simple {
+    enum Enum {
+        enum_value1 = 0;
+        enum_value2 = 1;
+    }
+
+    string str    = 1;
+    int32  int32  = 2;
+    int64  int64  = 3;
+    uint32 uint32 = 4;
+    uint64 uint64 = 5;
+    double double = 6;
+    bool   bool   = 7;
+    Enum   enum   = 8;
+
+    repeated string strs    = 10;
+    repeated int32  int32s  = 11;
+    repeated int64  int64s  = 12;
+    repeated uint32 uint32s = 13;
+    repeated uint64 uint64s = 14;
+    repeated double doubles = 15;
+    repeated bool   bools   = 16;
+    repeated Enum   enums   = 17;
+}
