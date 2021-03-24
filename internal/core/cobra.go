@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 
+	"google.golang.org/grpc/metadata"
+
 	"github.com/jerome-quere/grpc-cli/internal/args"
 
 	"github.com/spf13/cobra"
@@ -52,26 +54,26 @@ func defaultRun(ctx context.Context, method protoreflect.MethodDescriptor) func(
 	return func(cmd *cobra.Command, rawArgs []string) error {
 
 		req := dynamicpb.NewMessage(method.Input())
-		//res := dynamicpb.NewMessage(method.Output())
+		res := dynamicpb.NewMessage(method.Output())
 
 		err := args.Unmarshal(rawArgs, req)
 		if err != nil {
 			return fmt.Errorf("cannot unmarshal args: %s", err)
 		}
 
-		//conn, err := CtxGrpcConnection(ctx)
-		//if err != nil {
-		//	return fmt.Errorf("cannot get grpc connection: %s", err)
-		//}
-		//
-		//ctx := metadata.NewOutgoingContext(ctx, CtxMD(ctx))
+		conn, err := CtxGrpcConnection(ctx)
+		if err != nil {
+			return fmt.Errorf("cannot get grpc connection: %s", err)
+		}
 
-		//service := method.Parent().(protoreflect.ServiceDescriptor)
-		//method := fmt.Sprintf("/%s/%s", service.FullName(), method.Name())
-		//err = conn.Invoke(ctx, method, req, res)
-		//if err != nil {
-		//	return fmt.Errorf("error while infoking rpc: %s", err)
-		//}
+		ctx := metadata.NewOutgoingContext(ctx, CtxMD(ctx))
+
+		service := method.Parent().(protoreflect.ServiceDescriptor)
+		method := fmt.Sprintf("/%s/%s", service.FullName(), method.Name())
+		err = conn.Invoke(ctx, method, req, res)
+		if err != nil {
+			return fmt.Errorf("error while infoking rpc: %s", err)
+		}
 
 		raw, err := protojson.MarshalOptions{
 			Multiline:       true,

@@ -58,9 +58,13 @@ func unmarshalMessage(dest protoreflect.Message, argNameWords []string, value st
 		return unmarshal(value, dest)
 	}
 
+	if len(argNameWords) == 0 {
+		return fmt.Errorf("trying to set a value to a message not a field")
+	}
+
 	field := dest.Descriptor().Fields().ByName(protoreflect.Name(argNameWords[0]))
 	if field == nil {
-		return fmt.Errorf("unknonw fild %s", argNameWords[0])
+		return fmt.Errorf("unknown field %s", argNameWords[0])
 	}
 	return set(field, dest, argNameWords[1:], value)
 }
@@ -132,7 +136,7 @@ func set(field protoreflect.FieldDescriptor, dest protoreflect.Message, argNameW
 	default:
 
 		if field.Kind() == protoreflect.MessageKind {
-			return unmarshalMessage(dest.Get(field).Message(), argNameWords, value)
+			return unmarshalMessage(dest.Mutable(field).Message(), argNameWords, value)
 		}
 
 		v := protoreflect.Value{}
@@ -243,7 +247,7 @@ func unmarshalScalar(field protoreflect.FieldDescriptor, dest *protoreflect.Valu
 type UnmarshalFunc func(value string, message protoreflect.Message) error
 
 var unmarshalFuncs = map[protoreflect.FullName]UnmarshalFunc{
-	"google.wrapper.StringValue": func(value string, dest protoreflect.Message) error {
+	"google.protobuf.StringValue": func(value string, dest protoreflect.Message) error {
 		f := dest.Descriptor().Fields().ByName("value")
 		dest.Set(f, protoreflect.ValueOfString(value))
 		return nil

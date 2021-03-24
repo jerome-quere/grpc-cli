@@ -15,5 +15,6 @@ The core concepts are:
  - [X] Top level flag parsing
  - [ ] Argument parsing
  - [ ] Request execution
+ - [ ] ProtoSet flag can be a remote URL
  - [ ] Autocompletion
  - [ ] Streaming support
