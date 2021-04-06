@@ -13,8 +13,10 @@ The core concepts are:
  - [X] Core initialization
  - [X] Cobra command tree construction
  - [X] Top level flag parsing
- - [ ] Argument parsing
+ - [X] Basic configuration file support
+ - [X] Basic TLS configuration
+ - [ ] Basic Argument parsing
+ - [ ] Autocompletion
  - [ ] Request execution
  - [ ] ProtoSet flag can be a remote URL
- - [ ] Autocompletion
  - [ ] Streaming support

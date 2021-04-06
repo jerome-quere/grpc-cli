@@ -4,11 +4,9 @@ import (
 	"context"
 	"fmt"
 
-	"google.golang.org/grpc/metadata"
-
 	"github.com/jerome-quere/grpc-cli/internal/args"
-
 	"github.com/spf13/cobra"
+	"google.golang.org/grpc/metadata"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/reflect/protoreflect"
 	"google.golang.org/protobuf/reflect/protoregistry"
@@ -27,6 +25,12 @@ func buildRootCommand(ctx context.Context, files *protoregistry.Files) (*cobra.C
 	}
 	rootCmd.SetOut(CtxStderr(ctx))
 
+	rpcCmd := &cobra.Command{
+		Use:   "rpc",
+		Short: "Execute an rpc call",
+	}
+	rootCmd.AddCommand(rpcCmd)
+
 	files.RangeFiles(func(file protoreflect.FileDescriptor) bool {
 		for i := 0; i < file.Services().Len(); i++ {
 			service := file.Services().Get(i)
@@ -42,7 +46,7 @@ func buildRootCommand(ctx context.Context, files *protoregistry.Files) (*cobra.C
 				})
 			}
 
-			rootCmd.AddCommand(serviceCmd)
+			rpcCmd.AddCommand(serviceCmd)
 		}
 		return true
 	})

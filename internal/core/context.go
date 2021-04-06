@@ -4,9 +4,10 @@ import (
 	"context"
 	"io"
 
-	"google.golang.org/grpc/metadata"
+	"github.com/sirupsen/logrus"
 
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/metadata"
 )
 
 type contextDataKey struct{}
@@ -18,6 +19,7 @@ type contextData struct {
 	Stderr     io.Writer
 	Stdout     io.Writer
 	Stdin      io.Reader
+	Logger     *logrus.Logger
 
 	DialConfig *DialConfig
 	Connection *grpc.ClientConn

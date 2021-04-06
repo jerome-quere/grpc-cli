@@ -1,18 +1,14 @@
 package core
 
 import (
-	"bufio"
-	"bytes"
 	"context"
 	"fmt"
 	"io"
 	"io/ioutil"
-	"net/textproto"
-	"strings"
 	"time"
 
-	"github.com/spf13/pflag"
-	"google.golang.org/grpc/metadata"
+	"github.com/jerome-quere/grpc-cli/internal/config"
+	"github.com/sirupsen/logrus"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/reflect/protodesc"
 	"google.golang.org/protobuf/reflect/protoregistry"
@@ -26,71 +22,74 @@ type BootstrapConfig struct {
 	Args   []string
 }
 
-type MetadataFlags metadata.MD
-
-func (m *MetadataFlags) String() string {
-	return ""
-}
-
-func (m *MetadataFlags) Set(s string) error {
-	h, err := textproto.NewReader(bufio.NewReader(bytes.NewBufferString(s + "\n\n"))).ReadMIMEHeader()
-	if err != nil {
-		return err
-	}
-	for k, v := range h {
-		delete(h, k)
-		h[strings.ToLower(k)] = v
-	}
-	*m = MetadataFlags(metadata.Join(metadata.MD(*m), metadata.MD(h)))
-	return nil
-}
-
-func (m *MetadataFlags) Type() string {
-	return "test"
-}
-
-func (m *MetadataFlags) MD() metadata.MD {
-	return metadata.MD(*m)
-}
-
 const defaultDialTimeout = time.Second * 10
 
-func Bootstrap(ctx context.Context, config *BootstrapConfig) int {
+func Bootstrap(ctx context.Context, bootstrapConfig *BootstrapConfig) int {
 
-	var descriptorPath string
-	var target string
-	var mdFlag MetadataFlags
+	logger := logrus.New()
+	logger.SetFormatter(logrus.Formatter(&logrus.TextFormatter{
+		DisableTimestamp:       true,
+		DisableLevelTruncation: true,
+	}))
+	logger.SetOutput(bootstrapConfig.Stderr)
 
-	flags := pflag.NewFlagSet(config.Args[0], pflag.ContinueOnError)
-	flags.StringVarP(&descriptorPath, "descriptor", "d", "./descriptor.pb", "Path to the descriptor file")
-	flags.StringVarP(&target, "target", "t", "127.0.0.1:8080", "The grpc connection target")
-	flags.VarP(&mdFlag, "metadata", "m", "Metadata to attache to the request")
-
-	// Ignore unknown flag
-	flags.ParseErrorsWhitelist.UnknownFlags = true
-	// Make sure usage is never print by the parse method. (It should only be print by cobra)
-	flags.Usage = func() {}
-
+	flags := NewFlagSet(bootstrapConfig.Args[0])
 	// We don't do any error validation as:
 	// Additional flag can be added on a per-command basis inside cobra
 	// parse would fail as these flag are not known at this time.
-	_ = flags.Parse(config.Args)
+	_ = flags.Parse(bootstrapConfig.Args)
 
-	files, err := loadDescriptorFile(descriptorPath)
-	if err != nil {
-		_, _ = fmt.Fprintf(config.Stderr, "cannot load descriptor file: %s", err)
-		return -1
+	logger.SetLevel(logrus.InfoLevel)
+	if flags.Verbose {
+		logger.SetLevel(logrus.DebugLevel)
 	}
 
+	// Load profile from config file and flags
+	logger.Debugf("Loading config file from %s with profile %s", flags.Config, flags.Profile)
+	profile, err := config.LoadProfile(flags.Config, flags.Profile)
+	if err != nil {
+		logger.Errorf("cannot load profile: %s", err)
+		return 1
+	}
+	profile.Merge(flags.GetProfile())
+
+	// Validate profile to make sure all required fields are set
+	err = profile.Validate()
+	if err != nil {
+		logger.Errorf("error while validating profile: %s", err)
+		return 1
+	}
+	logger.Debugf("Loading profile complete: %s", profile)
+
+	// Loading proto FileSetDescriptor file
+	logger.Debugf("Loading descriptor from file: %s", profile.GetDescriptor())
+	files, err := loadDescriptorFile(profile.GetDescriptor())
+	if err != nil {
+		logger.Errorf("cannot load descriptor file: %s\n", err)
+		return 1
+	}
+	logger.Debugf("Loading descriptor complete: %d proto files found", files.NumFiles())
+
+	// Generating TLS configuration from the profile
+	logger.Debugf("Loading tls config")
+	tlsConfig, err := profile.GetTLSConfig()
+	if err != nil {
+		logger.Errorf("Cannont load TLS config: %s", err)
+		return 1
+	}
+	logger.Debugf("Loading tls config complete")
+
 	ctxData := &contextData{
-		BinaryName: config.Args[0],
-		Stdin:      config.Stdin,
-		Stdout:     config.Stdout,
-		Stderr:     config.Stderr,
-		MD:         mdFlag.MD(),
+		BinaryName: bootstrapConfig.Args[0],
+		Stdin:      bootstrapConfig.Stdin,
+		Stdout:     bootstrapConfig.Stdout,
+		Stderr:     bootstrapConfig.Stderr,
+		MD:         profile.Metadata,
+		Logger:     logger,
 		DialConfig: &DialConfig{
-			Target:  target,
-			Timeout: defaultDialTimeout,
+			TLSConfig: tlsConfig,
+			Target:    profile.GetTarget(),
+			Timeout:   defaultDialTimeout,
 		},
 	}
 	ctx = ctxInjectData(ctx, ctxData)
@@ -102,19 +101,16 @@ func Bootstrap(ctx context.Context, config *BootstrapConfig) int {
 
 	rootCmd, err := buildRootCommand(ctx, files)
 	if err != nil {
-		_, _ = fmt.Fprintf(config.Stderr, "cannot build cobra command: %s", err)
-		return -1
+		logger.Errorf("cannot build cobra command: %s", err)
+		return 1
 	}
 
-	rootCmd.PersistentFlags().StringVarP(&target, "descriptor", "d", "./descriptor.pb", "Path to the descriptor file")
-	rootCmd.PersistentFlags().StringVarP(&target, "target", "t", "127.0.0.1:8080", "The grpc connection target")
-	rootCmd.PersistentFlags().VarP(&mdFlag, "metadata", "m", "Metadata to attache to the request")
-
-	rootCmd.SetArgs(config.Args[1:])
+	rootCmd.PersistentFlags().AddFlagSet(flags.FlagSet)
+	rootCmd.SetArgs(bootstrapConfig.Args[1:])
 	err = rootCmd.Execute()
 	if err != nil {
-		_, _ = fmt.Fprintf(config.Stderr, "Error when executing cmd: %s", err)
-		return -1
+		logger.Errorf("error when executing cmd: %s\n", err)
+		return 1
 	}
 
 	return 0
