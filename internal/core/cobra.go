@@ -24,6 +24,7 @@ func buildRootCommand(ctx context.Context, files *protoregistry.Files) (*cobra.C
 		SilenceUsage: true,
 	}
 	rootCmd.SetOut(CtxStderr(ctx))
+	rootCmd.AddCommand(AutocompleteCommand(ctx, files))
 
 	rpcCmd := &cobra.Command{
 		Use:   "rpc",

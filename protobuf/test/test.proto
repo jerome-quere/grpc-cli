@@ -4,6 +4,10 @@ package test;
 
 import "google/protobuf/wrappers.proto";
 
+service Api {
+    rpc Echo(Simple) returns (Simple) {}
+}
+
 message Simple {
     enum Enum {
         enum_value1 = 0;
