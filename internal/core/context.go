@@ -50,6 +50,10 @@ func CtxMD(ctx context.Context) metadata.MD {
 	return ctxData(ctx).MD
 }
 
+func CtxLogger(ctx context.Context) *logrus.Logger {
+	return ctxData(ctx).Logger
+}
+
 func CtxGrpcConnection(ctx context.Context) (*grpc.ClientConn, error) {
 	data := ctxData(ctx)
 	if data.Connection != nil {

@@ -46,19 +46,19 @@ func LoadProfile(configPath string, profileName string) (Profile, error) {
 func (p Profile) Merge(p2 Profile) Profile {
 	newProfile := p
 
-	if newProfile.Target == nil {
+	if p2.Target != nil {
 		newProfile.Target = p2.Target
 	}
-	if newProfile.Descriptor == nil {
+	if p2.Descriptor != nil {
 		newProfile.Descriptor = p2.Descriptor
 	}
-	if newProfile.CaCert == nil {
+	if p2.CaCert != nil {
 		newProfile.CaCert = p2.CaCert
 	}
-	if newProfile.Cert == nil {
+	if p2.Cert != nil {
 		newProfile.Cert = p2.Cert
 	}
-	if newProfile.Key == nil {
+	if p2.Key != nil {
 		newProfile.Key = p2.Key
 	}
 	for k, v := range p2.Metadata {

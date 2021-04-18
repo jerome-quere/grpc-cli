@@ -4,7 +4,10 @@ package test;
 
 import "google/protobuf/wrappers.proto";
 
+// This is a simple Test service
 service Api {
+
+    // This method simply return the request
     rpc Echo(Simple) returns (Simple) {}
 }
 
@@ -19,6 +22,7 @@ message Simple {
         repeated string strs = 2;
     }
 
+    // A basic string
     string  str    = 100;
     int32   int32  = 101;
     int64   int64  = 102;

@@ -1,0 +1,23 @@
+🎲🎲🎲 EXIT CODE: 0 🎲🎲🎲
+🟥🟥🟥 STDERR️️ 🟥🟥🟥️
+Usage:
+  grpc-cli rpc test.Api [command]
+
+Available Commands:
+  Echo        
+
+Flags:
+  -h, --help   help for test.Api
+
+Global Flags:
+      --ca-cert string      Root CA you want to use. Use system by default
+      --cert string         Client certificate path. (PEM format)
+  -c, --config string       Path to the config file (default "~/.config/grpc-cli/config.yaml")
+  -d, --descriptor string   Path to the descriptor file
+      --key string          Client key path. (PEM format)
+  -m, --metadata test       Metadata to attache to the request
+  -p, --profile string      Config profile to load (default "default")
+  -t, --target string       The grpc connection target (default "127.0.0.1:8080")
+  -v, --verbose             Enable verbose
+
+Use "grpc-cli rpc test.Api [command] --help" for more information about a command.

@@ -1,8 +1,11 @@
 package core
 
 import (
+	"bytes"
 	"context"
 	"fmt"
+	"strings"
+	"text/tabwriter"
 
 	"github.com/jerome-quere/grpc-cli/internal/args"
 	"github.com/spf13/cobra"
@@ -13,7 +16,7 @@ import (
 	"google.golang.org/protobuf/types/dynamicpb"
 )
 
-func buildRootCommand(ctx context.Context, files *protoregistry.Files) (*cobra.Command, error) {
+func buildCobraCommand(ctx context.Context, files *protoregistry.Files) (*cobra.Command, error) {
 	rootCmd := &cobra.Command{
 		Use: CtxBinaryName(ctx),
 
@@ -24,55 +27,128 @@ func buildRootCommand(ctx context.Context, files *protoregistry.Files) (*cobra.C
 		SilenceUsage: true,
 	}
 	rootCmd.SetOut(CtxStderr(ctx))
-	rootCmd.AddCommand(AutocompleteCommand(ctx, files))
+	rootCmd.AddCommand(AutocompleteCobraCommand(ctx, files))
+	rootCmd.AddCommand(RpcCobraCommand(ctx, files))
+	return rootCmd, nil
+}
 
-	rpcCmd := &cobra.Command{
+func RpcCobraCommand(ctx context.Context, files *protoregistry.Files) *cobra.Command {
+
+	cmd := &cobra.Command{
 		Use:   "rpc",
 		Short: "Execute an rpc call",
 	}
-	rootCmd.AddCommand(rpcCmd)
 
 	files.RangeFiles(func(file protoreflect.FileDescriptor) bool {
 		for i := 0; i < file.Services().Len(); i++ {
 			service := file.Services().Get(i)
+
 			serviceCmd := &cobra.Command{
 				Use: string(service.FullName()),
 			}
 
 			for i := 0; i < service.Methods().Len(); i++ {
 				method := service.Methods().Get(i)
-				serviceCmd.AddCommand(&cobra.Command{
+				methodCmd := &cobra.Command{
 					Use:  string(method.Name()),
-					RunE: defaultRun(ctx, method),
-				})
+					RunE: rpcRun(ctx, method),
+				}
+				methodCmd.SetUsageTemplate(usageTemplate)
+				methodCmd.Annotations = make(map[string]string)
+				methodCmd.Annotations["UsageArgs"] = buildUsageArgs(ctx, method.Input())
+
+				serviceCmd.AddCommand(methodCmd)
 			}
 
-			rpcCmd.AddCommand(serviceCmd)
+			cmd.AddCommand(serviceCmd)
 		}
 		return true
 	})
 
-	return rootCmd, nil
+	return cmd
 }
 
-func defaultRun(ctx context.Context, method protoreflect.MethodDescriptor) func(cmd *cobra.Command, args []string) error {
+func buildUsageArgs(ctx context.Context, message protoreflect.MessageDescriptor) string {
+	var argsBuffer bytes.Buffer
+	tw := tabwriter.NewWriter(&argsBuffer, 0, 0, 3, ' ', 0)
+
+	for i := 0; i < message.Fields().Len(); i++ {
+		field := message.Fields().Get(i)
+		argSpecUsageLeftPart := string(field.Name())
+		argSpecUsageRightPart := field.Kind().String()
+		if enum := field.Enum(); enum != nil {
+			names := []string(nil)
+			for i := 0; i < enum.Values().Len(); i++ {
+				names = append(names, string(enum.Values().Get(i).Name()))
+			}
+			argSpecUsageRightPart += "(" + strings.Join(names, ", ") + ")"
+		}
+
+		_, err := fmt.Fprintf(tw, "  %s\t%s\n", argSpecUsageLeftPart, argSpecUsageRightPart)
+		if err != nil {
+			CtxLogger(ctx).Errorf("cannot build usage arg for message %s: %s", message.FullName(), err)
+			return ""
+		}
+	}
+	tw.Flush()
+
+	paramsStr := strings.TrimSuffix(argsBuffer.String(), "\n")
+
+	return paramsStr
+}
+
+const usageTemplate = `Usage:{{if .Runnable}}
+  {{.UseLine}}{{end}}{{if .HasAvailableSubCommands}}
+  {{.CommandPath}} [command]{{end}}{{if gt (len .Aliases) 0}}
+
+Aliases:
+  {{.NameAndAliases}}{{end}}{{if .HasExample}}
+
+Examples:
+{{.Example}}{{end}}{{if .Annotations.UsageArgs}}
+
+ARGS:
+{{.Annotations.UsageArgs}}{{end}}{{if .HasAvailableSubCommands}}
+
+Available Commands:{{range .Commands}}{{if (or .IsAvailableCommand (eq .Name "help"))}}
+  {{rpad .Name .NamePadding }} {{.Short}}{{end}}{{end}}{{end}}{{if .HasAvailableLocalFlags}}
+
+Flags:
+{{.LocalFlags.FlagUsages | trimTrailingWhitespaces}}{{end}}{{if .HasAvailableInheritedFlags}}
+
+Global Flags:
+{{.InheritedFlags.FlagUsages | trimTrailingWhitespaces}}{{end}}{{if .HasHelpSubCommands}}
+
+Additional help topics:{{range .Commands}}{{if .IsAdditionalHelpTopicCommand}}
+  {{rpad .CommandPath .CommandPathPadding}} {{.Short}}{{end}}{{end}}{{end}}{{if .HasAvailableSubCommands}}
+
+Use "{{.CommandPath}} [command] --help" for more information about a command.{{end}}
+`
+
+func rpcRun(ctx context.Context, method protoreflect.MethodDescriptor) func(cmd *cobra.Command, args []string) error {
 	return func(cmd *cobra.Command, rawArgs []string) error {
 
+		// Create gRPC request and response message
 		req := dynamicpb.NewMessage(method.Input())
 		res := dynamicpb.NewMessage(method.Output())
 
+		// Unmarshal argument inside the gRPC request message
 		err := args.Unmarshal(rawArgs, req)
 		if err != nil {
 			return fmt.Errorf("cannot unmarshal args: %s", err)
 		}
 
+		// Get the gRPC connection from the context.
+		// Connection will be automatically closed in the Bootstrap method.
 		conn, err := CtxGrpcConnection(ctx)
 		if err != nil {
 			return fmt.Errorf("cannot get grpc connection: %s", err)
 		}
 
+		// Injecting metadata in outgoing context
 		ctx := metadata.NewOutgoingContext(ctx, CtxMD(ctx))
 
+		// Executing gRPC call
 		service := method.Parent().(protoreflect.ServiceDescriptor)
 		method := fmt.Sprintf("/%s/%s", service.FullName(), method.Name())
 		err = conn.Invoke(ctx, method, req, res)
@@ -80,6 +156,7 @@ func defaultRun(ctx context.Context, method protoreflect.MethodDescriptor) func(
 			return fmt.Errorf("error while infoking rpc: %s", err)
 		}
 
+		// Marshal response in json
 		raw, err := protojson.MarshalOptions{
 			Multiline:       true,
 			Indent:          "  ",
@@ -91,6 +168,7 @@ func defaultRun(ctx context.Context, method protoreflect.MethodDescriptor) func(
 			return fmt.Errorf("cannont marshal response: %s", err)
 		}
 
+		// Write response on stdout
 		_, err = CtxStdout(ctx).Write(raw)
 		if err != nil {
 			return fmt.Errorf("cannont write response: %s", err)
