@@ -17,6 +17,7 @@ type FlagSet struct {
 	Cert       string
 	Key        string
 	Verbose    bool
+	DisableTLS bool
 }
 
 func NewFlagSet(binaryName string) *FlagSet {
@@ -27,11 +28,12 @@ func NewFlagSet(binaryName string) *FlagSet {
 	flags.StringVarP(&flags.Config, "config", "c", config.DefaultConfigPath, "Path to the config file")
 	flags.StringVarP(&flags.Profile, "profile", "p", config.DefaultProfileName, "Config profile to load")
 	flags.StringVarP(&flags.Descriptor, "descriptor", "d", "", "Path to the descriptor file")
-	flags.StringVarP(&flags.Target, "target", "t", "127.0.0.1:8080", "The grpc connection target")
+	flags.StringVarP(&flags.Target, "target", "t", "", "The grpc connection target")
 	flags.StringVarP(&flags.CaCert, "ca-cert", "", "", "Root CA you want to use. Use system by default")
 	flags.StringVarP(&flags.Cert, "cert", "", "", "Client certificate path. (PEM format)")
 	flags.StringVarP(&flags.Key, "key", "", "", "Client key path. (PEM format)")
 	flags.BoolVarP(&flags.Verbose, "verbose", "v", false, "Enable verbose")
+	flags.BoolVarP(&flags.DisableTLS, "disable-tls", "", false, "Enable verbose")
 	flags.VarP(&flags.Metadata, "metadata", "m", "Metadata to attache to the request")
 
 	flags.ParseErrorsWhitelist.UnknownFlags = true
@@ -57,6 +59,9 @@ func (fs *FlagSet) GetProfile() config.Profile {
 	}
 	if fs.Key != "" {
 		profile.Key = &fs.Key
+	}
+	if fs.DisableTLS {
+		profile.DisableTLS = &fs.DisableTLS
 	}
 
 	return profile

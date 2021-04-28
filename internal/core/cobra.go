@@ -153,7 +153,7 @@ func rpcRun(ctx context.Context, method protoreflect.MethodDescriptor) func(cmd 
 		method := fmt.Sprintf("/%s/%s", service.FullName(), method.Name())
 		err = conn.Invoke(ctx, method, req, res)
 		if err != nil {
-			return fmt.Errorf("error while infoking rpc: %s", err)
+			return fmt.Errorf("error while invoking rpc: %s", err)
 		}
 
 		// Marshal response in json
@@ -162,7 +162,7 @@ func rpcRun(ctx context.Context, method protoreflect.MethodDescriptor) func(cmd 
 			Indent:          "  ",
 			UseProtoNames:   true,
 			EmitUnpopulated: true,
-		}.Marshal(req)
+		}.Marshal(res)
 
 		if err != nil {
 			return fmt.Errorf("cannont marshal response: %s", err)

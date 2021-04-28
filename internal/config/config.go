@@ -5,6 +5,7 @@ import (
 	"os"
 
 	"github.com/jerome-quere/grpc-cli/internal/util"
+	"google.golang.org/grpc/metadata"
 	"gopkg.in/yaml.v3"
 )
 
@@ -61,6 +62,14 @@ func (p Profile) Merge(p2 Profile) Profile {
 	if p2.Key != nil {
 		newProfile.Key = p2.Key
 	}
+	if p2.DisableTLS != nil {
+		newProfile.DisableTLS = p2.DisableTLS
+	}
+
+	if newProfile.Metadata == nil && len(p2.Metadata) > 0 {
+		newProfile.Metadata = make(metadata.MD)
+	}
+
 	for k, v := range p2.Metadata {
 		if _, exist := newProfile.Metadata[k]; !exist {
 			newProfile.Metadata[k] = v
