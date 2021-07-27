@@ -4,8 +4,10 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"time"
 
 	"google.golang.org/protobuf/reflect/protoreflect"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 func Unmarshal(args []string, dest protoreflect.Message) error {
@@ -250,6 +252,19 @@ var unmarshalFuncs = map[protoreflect.FullName]UnmarshalFunc{
 	"google.protobuf.StringValue": func(value string, dest protoreflect.Message) error {
 		f := dest.Descriptor().Fields().ByName("value")
 		dest.Set(f, protoreflect.ValueOfString(value))
+		return nil
+	},
+	"google.protobuf.Timestamp": func(value string, dest protoreflect.Message) error {
+		date, err := time.Parse(time.RFC3339, value)
+		if err != nil {
+			return err
+		}
+		t := timestamppb.New(date)
+
+		seconds := dest.Descriptor().Fields().ByName("seconds")
+		nanos := dest.Descriptor().Fields().ByName("nanos")
+		dest.Set(seconds, protoreflect.ValueOfInt64(t.Seconds))
+		dest.Set(nanos, protoreflect.ValueOfInt32(t.Nanos))
 		return nil
 	},
 }
