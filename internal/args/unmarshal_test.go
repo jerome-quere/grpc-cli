@@ -63,6 +63,10 @@ func TestUnmarshal(t *testing.T) {
 			"nested.strs.0=nested_str_1",
 			"nested.strs.1=nested_str_2",
 			"wrapper_str=wrapper_str",
+			"wrapper_int32=32",
+			"wrapper_uint32=32",
+			"wrapper_int64=64",
+			"wrapper_uint64=64",
 		}, `
 			{
 				"str": "abc",
@@ -80,7 +84,11 @@ func TestUnmarshal(t *testing.T) {
 						"nested_str_2"
 					]
 				},
-				"wrapper_str": "wrapper_str"
+				"wrapper_str": "wrapper_str",
+				"wrapper_int32": 32,
+				"wrapper_uint32": 32,
+				"wrapper_int64": "64",
+				"wrapper_uint64": "64"
 			}
 		`)
 	})

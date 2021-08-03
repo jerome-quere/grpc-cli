@@ -46,6 +46,6 @@ func Test_autocomplete(t *testing.T) {
 	t.Run("grpc-cli ", run(TestCase{Suggestions: []string{"rpc"}}))
 	t.Run("grpc-cli rpc tes", run(TestCase{Suggestions: []string{"test.Api"}}))
 	t.Run("grpc-cli rpc test.Api ", run(TestCase{Suggestions: []string{"Echo"}}))
-	t.Run("grpc-cli rpc test.Api Echo s", run(TestCase{Suggestions: []string{"str="}}))
+	t.Run("grpc-cli rpc test.Api Echo s", run(TestCase{Suggestions: []string{"str=", "strs="}}))
 	t.Run("grpc-cli rpc test.Api Echo u", run(TestCase{Suggestions: []string{"uint32=", "uint64="}}))
 }

@@ -1,7 +1,27 @@
 🎲🎲🎲 EXIT CODE: 0 🎲🎲🎲
 🟥🟥🟥 STDERR️️ 🟥🟥🟥️
-TEST Usage:
+Usage:
   grpc-cli rpc test.Api Echo [flags]
+
+ARGS:
+  str              string
+  int32            int32
+  int64            int64
+  uint32           uint32
+  uint64           uint64
+  double           double
+  bool             bool
+  enum             enum(enum_value1, enum_value2)
+  nested           message
+  wrapper_str      message
+  wrapper_int32    message
+  wrapper_uint32   message
+  wrapper_int64    message
+  wrapper_uint64   message
+  strs             string
+  enums            enum(enum_value1, enum_value2)
+  nesteds          message
+  wrapper_strs     message
 
 Flags:
   -h, --help   help for Echo
@@ -11,8 +31,9 @@ Global Flags:
       --cert string         Client certificate path. (PEM format)
   -c, --config string       Path to the config file (default "~/.config/grpc-cli/config.yaml")
   -d, --descriptor string   Path to the descriptor file
+      --disable-tls         Enable verbose
       --key string          Client key path. (PEM format)
   -m, --metadata test       Metadata to attache to the request
   -p, --profile string      Config profile to load (default "default")
-  -t, --target string       The grpc connection target (default "127.0.0.1:8080")
+  -t, --target string       The grpc connection target
   -v, --verbose             Enable verbose

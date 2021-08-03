@@ -265,6 +265,40 @@ var unmarshalFuncs = map[protoreflect.FullName]UnmarshalFunc{
 		nanos := dest.Descriptor().Fields().ByName("nanos")
 		dest.Set(seconds, protoreflect.ValueOfInt64(t.Seconds))
 		dest.Set(nanos, protoreflect.ValueOfInt32(t.Nanos))
+	"google.protobuf.Int32Value": func(value string, dest protoreflect.Message) error {
+		f := dest.Descriptor().Fields().ByName("value")
+		v, err := strconv.ParseInt(value, 10, 32)
+		if err != nil {
+			return err
+		}
+		dest.Set(f, protoreflect.ValueOfInt32(int32(v)))
+		return nil
+	},
+	"google.protobuf.UInt32Value": func(value string, dest protoreflect.Message) error {
+		f := dest.Descriptor().Fields().ByName("value")
+		v, err := strconv.ParseUint(value, 10, 32)
+		if err != nil {
+			return err
+		}
+		dest.Set(f, protoreflect.ValueOfUint32(uint32(v)))
+		return nil
+	},
+	"google.protobuf.Int64Value": func(value string, dest protoreflect.Message) error {
+		f := dest.Descriptor().Fields().ByName("value")
+		v, err := strconv.ParseInt(value, 10, 64)
+		if err != nil {
+			return err
+		}
+		dest.Set(f, protoreflect.ValueOfInt64(v))
+		return nil
+	},
+	"google.protobuf.UInt64Value": func(value string, dest protoreflect.Message) error {
+		f := dest.Descriptor().Fields().ByName("value")
+		v, err := strconv.ParseUint(value, 10, 64)
+		if err != nil {
+			return err
+		}
+		dest.Set(f, protoreflect.ValueOfUint64(v))
 		return nil
 	},
 }

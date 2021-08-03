@@ -33,6 +33,10 @@ message Simple {
     Enum    enum   = 107;
     Nested nested  = 108;
     google.protobuf.StringValue wrapper_str = 109;
+    google.protobuf.Int32Value  wrapper_int32 = 110;
+    google.protobuf.UInt32Value wrapper_uint32 = 111;
+    google.protobuf.Int64Value  wrapper_int64 = 112;
+    google.protobuf.UInt64Value wrapper_uint64 = 113;
 
 
     repeated string strs    = 200;
