@@ -265,6 +265,8 @@ var unmarshalFuncs = map[protoreflect.FullName]UnmarshalFunc{
 		nanos := dest.Descriptor().Fields().ByName("nanos")
 		dest.Set(seconds, protoreflect.ValueOfInt64(t.Seconds))
 		dest.Set(nanos, protoreflect.ValueOfInt32(t.Nanos))
+		return nil
+	},
 	"google.protobuf.Int32Value": func(value string, dest protoreflect.Message) error {
 		f := dest.Descriptor().Fields().ByName("value")
 		v, err := strconv.ParseInt(value, 10, 32)
